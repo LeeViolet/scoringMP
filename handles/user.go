@@ -1,7 +1,7 @@
 package handles
 
 import (
-	mp "scoringMP/service"
+	"scoringMP/service/mp"
 
 	"github.com/gin-gonic/gin"
 )

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"scoringMP/config"
 )
 
 // 定义微信返回的数据结构
@@ -19,7 +21,7 @@ type WxSessionData struct {
 
 func Code2Session(code string) (string, error) {
 	// 微信接口地址
-	url := fmt.Sprintf("https://api.weixin.qq.com/sns/jscode2session?appid=%s&secret=%s&js_code=%s&grant_type=authorization_code", "YourAppId", "YourSecret", code)
+	url := fmt.Sprintf("https://api.weixin.qq.com/sns/jscode2session?appid=%s&secret=%s&js_code=%s&grant_type=authorization_code", config.Config.AppId, config.Config.AppSecret, code)
 
 	resp, err := http.Get(url)
 	if err != nil {
