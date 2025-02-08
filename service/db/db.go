@@ -95,9 +95,9 @@ func QueryUserRoom(openid string) (sql.NullInt64, error) {
 }
 
 // 查询历史战绩
-func QueryHistory(openid string, page int, pageSize int) ([]int, error) {
+func QueryHistory(openid string) ([]int, error) {
 	var scores []int
-	rows, err := db.Query("SELECT score FROM scores WHERE openid =? ORDER BY createData DESC LIMIT ?,?", openid, (page-1)*pageSize, pageSize)
+	rows, err := db.Query("SELECT score FROM scores WHERE openid =? ORDER BY createData DESC", openid)
 	if err != nil {
 		fmt.Println("Error querying history:", err)
 		return nil, err
@@ -116,6 +116,15 @@ func QueryHistory(openid string, page int, pageSize int) ([]int, error) {
 
 // 创建房间
 func CreateRoom(openid string) (int, error) {
+	// 检查用户是否已经在房间中
+	user, err := QueryUser(openid)
+	if err != nil {
+		fmt.Println("Error querying user:", err)
+		return 0, err
+	}
+	if user.RoomId.Valid {
+		return int(user.RoomId.Int64), nil
+	}
 	tx, err := db.Begin()
 	if err != nil {
 		fmt.Println("Error starting transaction:", err)
@@ -128,32 +137,23 @@ func CreateRoom(openid string) (int, error) {
 			tx.Commit()
 		}
 	}()
-	var count int
-	err = tx.QueryRow("SELECT COUNT(*) FROM users WHERE openid =?", openid).Scan(&count)
-	if err != nil {
-		fmt.Println("Error querying user count:", err)
-		return 0, err
-	}
-	if count == 0 {
-		fmt.Println("用户不存在")
-		return 0, errors.New("用户不存在")
-	}
+	// 插入房间
 	result, err := tx.Exec("INSERT INTO rooms (owner, createData, opened) VALUES (?, NOW(), 1)", openid)
 	if err != nil {
-		fmt.Println("Error creating room:", err)
+		fmt.Println("Error inserting room:", err)
 		return 0, err
 	}
-	id, err := result.LastInsertId()
+	roomId, err := result.LastInsertId()
 	if err != nil {
-		fmt.Println("Error getting last insert ID:", err)
+		fmt.Println("Error getting room id:", err)
 		return 0, err
 	}
-	_, err = tx.Exec("UPDATE users SET roomId = ? WHERE openid = ?", id, openid)
+	_, err = tx.Exec("UPDATE users SET roomId =? WHERE openid =?", roomId, openid)
 	if err != nil {
 		fmt.Println("Error updating user room:", err)
 		return 0, err
 	}
-	return int(id), nil
+	return int(roomId), nil
 }
 
 // 获取房间用户列表

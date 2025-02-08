@@ -1,10 +1,12 @@
 package model
 
+import "database/sql"
+
 type User struct {
-	Openid     string `json:"openid"`
-	Nickname   string `json:"nickname"`
-	RoomId     int    `json:"roomId"`
-	CreateData string `json:"createData"`
+	Openid     string        `json:"openid"`
+	Nickname   string        `json:"nickname"`
+	RoomId     sql.NullInt64 `json:"roomId"`
+	CreateData string        `json:"createData"`
 }
 
 type Room struct {

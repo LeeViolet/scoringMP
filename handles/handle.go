@@ -50,7 +50,7 @@ func Login(c *gin.Context) {
 
 // 获取用户房间 id
 func GetUserRoom(c *gin.Context) {
-	openId := c.Param("openId")
+	openId := c.Query("openId")
 	roomId, err := db.QueryUserRoom(openId)
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
@@ -61,4 +61,26 @@ func GetUserRoom(c *gin.Context) {
 	} else {
 		c.String(204, "")
 	}
+}
+
+// 获取用户历史战绩
+func GetHistory(c *gin.Context) {
+	openId := c.Query("openId")
+	scores, err := db.QueryHistory(openId)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, scores)
+}
+
+// 创建房间
+func CreateRoom(c *gin.Context) {
+	openId := c.Query("openId")
+	roomId, err := db.CreateRoom(openId)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	c.String(200, fmt.Sprint(roomId))
 }
