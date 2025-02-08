@@ -156,20 +156,20 @@ func CreateRoom(openid string) (int, error) {
 	return int(roomId), nil
 }
 
+// 检查房间是否关闭
+func CheckRoom(roomId int) (bool, error) {
+	var opened bool
+	err := db.QueryRow("SELECT opened FROM rooms WHERE id =?", roomId).Scan(&opened)
+	if err != nil {
+		fmt.Println("Error querying room opened:", err)
+		return false, err
+	}
+	return opened, nil
+}
+
 // 获取房间用户列表
 func GetRoomUsers(roomId int) ([]model.User, error) {
 	var users []model.User
-	// 检查房间是否存在
-	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM rooms WHERE id =?", roomId).Scan(&count)
-	if err != nil {
-		fmt.Println("Error querying room count:", err)
-		return nil, err
-	}
-	if count == 0 {
-		fmt.Println("房间不存在")
-		return nil, errors.New("房间不存在")
-	}
 	rows, err := db.Query("SELECT * FROM users WHERE roomId =?", roomId)
 	if err != nil {
 		fmt.Println("Error querying room users:", err)
@@ -189,21 +189,11 @@ func GetRoomUsers(roomId int) ([]model.User, error) {
 }
 
 // 获取房间分数列表
-func GetRoomRecord(roomId int) ([]model.Record, error) {
+func GetRoomRecords(roomId int) ([]model.Record, error) {
 	var records []model.Record
-	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM rooms WHERE id =?", roomId).Scan(&count)
-	if err != nil {
-		fmt.Println("Error querying room count:", err)
-		return nil, err
-	}
-	if count == 0 {
-		fmt.Println("房间不存在")
-		return nil, errors.New("房间不存在")
-	}
 	rows, err := db.Query("SELECT * FROM records WHERE roomId =?", roomId)
 	if err != nil {
-		fmt.Println("Error querying room scores:", err)
+		fmt.Println("Error querying room records:", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -211,9 +201,10 @@ func GetRoomRecord(roomId int) ([]model.Record, error) {
 		var record model.Record
 		err = rows.Scan(&record.Id, &record.RoomId, &record.Score, &record.FromUser, &record.ToUser, &record.CreateData)
 		if err != nil {
-			fmt.Println("Error scanning room scores:", err)
+			fmt.Println("Error scanning room records:", err)
 			return nil, err
 		}
+		records = append(records, record)
 	}
 	return records, nil
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"scoringMP/service/db"
 	"scoringMP/service/mp"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -83,4 +84,33 @@ func CreateRoom(c *gin.Context) {
 		return
 	}
 	c.String(200, fmt.Sprint(roomId))
+}
+
+// 获取用户列表和积分列表
+func GetRoomDetail(c *gin.Context) {
+	roomId, err := strconv.Atoi(c.Query("roomId"))
+	if err != nil {
+		c.JSON(400, gin.H{"error": "roomId is required"})
+		return
+	}
+	opened, err := db.CheckRoom(roomId)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	if !opened {
+		c.JSON(400, gin.H{"error": "room is not opened"})
+		return
+	}
+	users, err := db.GetRoomUsers(roomId)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	records, err := db.GetRoomRecords(roomId)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"users": users, "records": records})
 }
