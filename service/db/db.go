@@ -156,6 +156,13 @@ func CreateRoom(openid string) (int, error) {
 	return int(roomId), nil
 }
 
+// 查询用户积分
+func QueryScore(openid string, roomId int) (model.Score, error) {
+	var score model.Score
+	err := db.QueryRow("SELECT * FROM scores WHERE openid =? AND roomId =?", openid, roomId).Scan(&score.Id, &score.Openid, &score.RoomId, &score.Score, &score.CreateData)
+	return score, err
+}
+
 // 检查房间是否关闭
 func CheckRoom(roomId int) (bool, error) {
 	var opened bool
@@ -165,6 +172,12 @@ func CheckRoom(roomId int) (bool, error) {
 		return false, err
 	}
 	return opened, nil
+}
+
+// 添加积分
+func AddScore(openid string, roomId int) error {
+	_, err := db.Exec("INSERT INTO scores (openid, roomId, score, createData) VALUES (?,?,?, NOW())", openid, roomId, 0)
+	return err
 }
 
 // 获取房间用户列表
@@ -271,7 +284,43 @@ func ModifyNickname(openid string, nickname string) error {
 
 // 计分
 func AddRecord(roomId int, fromUser string, toUser string, score int) error {
-	_, err := db.Exec("INSERT INTO Records (roomId, score, fromUser, toUser, createData) VALUES (?, ?, ?, ?, NOW())", roomId, score, fromUser, toUser)
+	tx, err := db.Begin()
+	if err != nil {
+		fmt.Println("Error starting transaction:", err)
+		return err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+	// 查询 fromUser 和 toUser 的 score
+	var fromScore, toScore model.Score
+	err = tx.QueryRow("SELECT * FROM scores WHERE openid =? AND roomId =?", fromUser, roomId).Scan(&fromScore.Id, &fromScore.Openid, &fromScore.RoomId, &fromScore.Score, &fromScore.CreateData)
+	if err != nil {
+		fmt.Println("Error querying fromUser score:", err)
+		return err
+	}
+	err = tx.QueryRow("SELECT * FROM scores WHERE openid =? AND roomId =?", toUser, roomId).Scan(&toScore.Id, &toScore.Openid, &toScore.RoomId, &toScore.Score, &toScore.CreateData)
+	if err != nil {
+		fmt.Println("Error querying toUser score:", err)
+		return err
+	}
+	// 更新 fromUser 和 toUser 的 score
+	_, err = tx.Exec("UPDATE scores SET score =? WHERE openid =? AND roomId =?", fromScore.Score-score, fromUser, roomId)
+	if err != nil {
+		fmt.Println("Error updating fromUser score:", err)
+		return err
+	}
+	_, err = tx.Exec("UPDATE scores SET score =? WHERE openid =? AND roomId =?", toScore.Score+score, toUser, roomId)
+	if err != nil {
+		fmt.Println("Error updating toUser score:", err)
+		return err
+	}
+	// 插入记录
+	_, err = tx.Exec("INSERT INTO records (roomId, score, fromUser, toUser, createData) VALUES (?,?,?,?, NOW())", roomId, score, fromUser, toUser)
 	if err != nil {
 		fmt.Println("Error inserting record:", err)
 		return err
