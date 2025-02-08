@@ -201,3 +201,24 @@ func UpdateNickname(c *gin.Context) {
 	}
 	c.String(200, "ok")
 }
+
+type ExitRoomModel struct {
+	OpenId string `json:"openId"`
+	RoomId int    `json:"roomId"`
+}
+
+// 退出房间
+func ExitRoom(c *gin.Context) {
+	var data ExitRoomModel
+	err := c.Bind(&data)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "body error"})
+		return
+	}
+	_, err = db.QuitRoom(data.OpenId, data.RoomId)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, "ok")
+}

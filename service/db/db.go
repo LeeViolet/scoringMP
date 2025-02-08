@@ -223,53 +223,58 @@ func GetRoomRecords(roomId int) ([]model.Record, error) {
 }
 
 // 退出房间
-func QuitRoom(openid string) error {
-	var roomId sql.NullInt64
-	err := db.QueryRow("SELECT roomId FROM users WHERE openid =?", openid).Scan(&roomId)
+func QuitRoom(openid string, roomId int) (bool, error) {
+	tx, err := db.Begin()
 	if err != nil {
-		if err == sql.ErrNoRows {
-			fmt.Println("用户不存在")
-			return errors.New("用户不存在")
-		}
-		fmt.Println("Error querying user room:", err)
-		return err
+		fmt.Println("Error starting transaction:", err)
+		return false, err
 	}
-	if roomId.Valid {
-		var owner string
-		err = db.QueryRow("SELECT owner FROM rooms WHERE id =?", roomId.Int64).Scan(&owner)
+	defer func() {
 		if err != nil {
-			fmt.Println("Error querying room owner:", err)
-			return err
-		}
-		tx, err := db.Begin()
-		if err != nil {
-			fmt.Println("Error starting transaction:", err)
-			return err
-		}
-		defer func() {
-			if err != nil {
-				tx.Rollback()
-			} else {
-				tx.Commit()
-			}
-		}()
-		// 如果是房主退出，将所有人的 roomId 设置为 null
-		if owner == openid {
-			_, err = tx.Exec("UPDATE users SET roomId = NULL WHERE roomId =?", roomId.Int64)
-			if err != nil {
-				fmt.Println("Error updating user room:", err)
-				return err
-			}
-			_, err = tx.Exec("UPDATE rooms SET opened = 0 WHERE id =?", roomId.Int64)
-			if err != nil {
-				fmt.Println("Error updating room opened:", err)
-				return err
-			}
+			tx.Rollback()
 		} else {
-			_, err = tx.Exec("UPDATE users SET roomId = NULL WHERE openid =?", openid)
+			tx.Commit()
 		}
+	}()
+	// 检查用户是否在房间内
+	var count int
+	err = tx.QueryRow("SELECT COUNT(*) FROM users WHERE openid =? AND roomId =?", openid, roomId).Scan(&count)
+	if err != nil {
+		fmt.Println("Error querying user in room:", err)
+		return false, err
 	}
-	return nil
+	if count == 0 {
+		return false, errors.New("user not in room")
+	}
+	// 检查用户是否是房主
+	var room model.Room
+	err = tx.QueryRow("SELECT * FROM rooms WHERE id =? ADD opend = 1", roomId).Scan(&room.Id, &room.Owner, &room.CreateData, &room.Opened)
+	if err != nil {
+		fmt.Println("Error querying room:", err)
+		return false, err
+	}
+	if room.Owner != openid {
+		// 不是房主，直接退出
+		_, err = tx.Exec("UPDATE users SET roomId = NULL WHERE openid =? AND roomId =?", openid, roomId)
+		if err != nil {
+			fmt.Println("Error updating user room:", err)
+			return false, err
+		}
+		return false, nil
+	} else {
+		// 是房主，所有人退出房间，关闭房间
+		_, err = tx.Exec("UPDATE users SET roomId = NULL WHERE roomId =?", roomId)
+		if err != nil {
+			fmt.Println("Error updating user room:", err)
+			return false, err
+		}
+		_, err = tx.Exec("UPDATE rooms SET opened = 0 WHERE id =?", roomId)
+		if err != nil {
+			fmt.Println("Error updating room opened:", err)
+			return false, err
+		}
+		return true, nil
+	}
 }
 
 // 计分
@@ -322,4 +327,25 @@ func AddRecord(roomId int, fromUser string, toUser string, score int) error {
 func UpdateNickname(openid string, nickname string) error {
 	_, err := db.Exec("UPDATE users SET nickname =? WHERE openid =?", nickname, openid)
 	return err
+}
+
+// 查询积分
+func QueryScoreById(scoreId int) ([]model.Score, error) {
+	var scores []model.Score
+	rows, err := db.Query("SELECT * FROM scores WHERE id =?", scoreId)
+	if err != nil {
+		fmt.Println("Error querying score:", err)
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var score model.Score
+		err = rows.Scan(&score.Id, &score.Openid, &score.RoomId, &score.Score, &score.CreateData)
+		if err != nil {
+			fmt.Println("Error scanning score:", err)
+			return nil, err
+		}
+		scores = append(scores, score)
+	}
+	return scores, nil
 }

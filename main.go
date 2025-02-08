@@ -21,7 +21,6 @@ func main() {
 	if err != nil {
 		return
 	}
-	db.QueryUser("112323")
 	r := gin.Default()
 	routers.InitRouter(r)
 	r.Run(config.Config.Port)
