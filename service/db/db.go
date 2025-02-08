@@ -114,7 +114,7 @@ func QueryHistory(openid string) ([]int, error) {
 	return scores, nil
 }
 
-// 创建房间
+// 创建/加入房间
 func CreateRoom(openid string) (int, error) {
 	// 检查用户是否已经在房间中
 	user, err := QueryUser(openid)
@@ -270,7 +270,7 @@ func ModifyNickname(openid string, nickname string) error {
 }
 
 // 计分
-func AddRecords(roomId int, fromUser string, toUser string, score int) error {
+func AddRecord(roomId int, fromUser string, toUser string, score int) error {
 	_, err := db.Exec("INSERT INTO Records (roomId, score, fromUser, toUser, createData) VALUES (?, ?, ?, ?, NOW())", roomId, score, fromUser, toUser)
 	if err != nil {
 		fmt.Println("Error inserting record:", err)

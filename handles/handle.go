@@ -75,7 +75,7 @@ func GetHistory(c *gin.Context) {
 	c.JSON(200, scores)
 }
 
-// 创建房间
+// 创建/加入房间
 func CreateRoom(c *gin.Context) {
 	openId := c.Query("openId")
 	roomId, err := db.CreateRoom(openId)
@@ -113,4 +113,57 @@ func GetRoomDetail(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"users": users, "records": records})
+}
+
+type AddRecordModel struct {
+	RoomId   int    `json:"roomId"`
+	Score    int    `json:"score"`
+	FromUser string `json:"fromUser"`
+	ToUser   string `json:"toUser"`
+}
+
+// 计分
+func AddRecord(c *gin.Context) {
+	var data AddRecordModel
+	err := c.Bind(&data)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "body error"})
+		return
+	}
+	// 判断房间是否关闭
+	opened, err := db.CheckRoom(data.RoomId)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	if !opened {
+		c.JSON(400, gin.H{"error": "room is not opened"})
+		return
+	}
+	// 判断 fromUser 和 toUser 是否在房间中
+	fromUser, err := db.QueryUser(data.FromUser)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	if !fromUser.RoomId.Valid || fromUser.RoomId.Int64 != int64(data.RoomId) {
+		c.JSON(400, gin.H{"error": "fromUser is not in room"})
+		return
+	}
+	toUser, err := db.QueryUser(data.ToUser)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	if !toUser.RoomId.Valid || toUser.RoomId.Int64 != int64(data.RoomId) {
+		c.JSON(400, gin.H{"error": "toUser is not in room"})
+		return
+	}
+	// 插入记录
+	err = db.AddRecord(data.RoomId, data.FromUser, data.ToUser, data.Score)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	c.String(200, "ok")
 }
