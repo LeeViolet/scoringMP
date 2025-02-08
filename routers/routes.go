@@ -9,7 +9,6 @@ import (
 func InitRouter(r *gin.Engine) {
 	api := r.Group("/api")
 	{
-		api.GET("/hello", handles.HelloHandler)
 		api.POST("/login", handles.Login)
 	}
 }
