@@ -272,16 +272,6 @@ func QuitRoom(openid string) error {
 	return nil
 }
 
-// 修改昵称
-func ModifyNickname(openid string, nickname string) error {
-	_, err := db.Exec("UPDATE users SET nickname =? WHERE openid =?", nickname, openid)
-	if err != nil {
-		fmt.Println("Error modifying nickname:", err)
-		return err
-	}
-	return nil
-}
-
 // 计分
 func AddRecord(roomId int, fromUser string, toUser string, score int) error {
 	tx, err := db.Begin()
@@ -328,4 +318,8 @@ func AddRecord(roomId int, fromUser string, toUser string, score int) error {
 	return nil
 }
 
-// 加入房间
+// 修改昵称
+func UpdateNickname(openid string, nickname string) error {
+	_, err := db.Exec("UPDATE users SET nickname =? WHERE openid =?", nickname, openid)
+	return err
+}

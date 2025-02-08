@@ -180,3 +180,24 @@ func AddRecord(c *gin.Context) {
 	}
 	c.String(200, "ok")
 }
+
+type ModifyNicknameModel struct {
+	Openid   string `json:"openid"`
+	Nickname string `json:"nickname"`
+}
+
+// 修改昵称
+func UpdateNickname(c *gin.Context) {
+	var data ModifyNicknameModel
+	err := c.Bind(&data)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "body error"})
+		return
+	}
+	err = db.UpdateNickname(data.Openid, data.Nickname)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	c.String(200, "ok")
+}
