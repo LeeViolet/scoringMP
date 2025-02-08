@@ -2,6 +2,7 @@ package handles
 
 import (
 	"database/sql"
+	"fmt"
 	"scoringMP/service/db"
 	"scoringMP/service/mp"
 
@@ -45,4 +46,19 @@ func Login(c *gin.Context) {
 	}
 
 	c.String(200, openId)
+}
+
+// 获取用户房间 id
+func GetUserRoom(c *gin.Context) {
+	openId := c.Param("openId")
+	roomId, err := db.QueryUserRoom(openId)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	if roomId.Valid {
+		c.String(200, fmt.Sprint(roomId.Int64))
+	} else {
+		c.String(204, "")
+	}
 }

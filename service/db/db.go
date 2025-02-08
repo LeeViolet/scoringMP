@@ -88,14 +88,10 @@ func RegisterUser(openid string, nickname string) error {
 }
 
 // 查询用户房间
-func QueryUserRoom(openid string) (int, error) {
-	var roomId int
+func QueryUserRoom(openid string) (sql.NullInt64, error) {
+	var roomId sql.NullInt64
 	err := db.QueryRow("SELECT roomId FROM users WHERE openid = ?", openid).Scan(&roomId)
-	if err != nil {
-		fmt.Println("Error querying user room:", err)
-		return 0, err
-	}
-	return roomId, nil
+	return roomId, err
 }
 
 // 查询历史战绩
