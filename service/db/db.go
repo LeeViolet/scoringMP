@@ -88,10 +88,10 @@ func RegisterUser(openid string, nickname string) error {
 }
 
 // 查询用户房间
-func QueryUserRoom(openid string) (sql.NullInt64, error) {
-	var roomId sql.NullInt64
-	err := db.QueryRow("SELECT roomId FROM users WHERE openid = ?", openid).Scan(&roomId)
-	return roomId, err
+func QueryUserRoom(openid string) (model.Room, error) {
+	var room model.Room
+	err := db.QueryRow("SELECT * FROM rooms WHERE id =(SELECT roomId FROM users WHERE openid =?)", openid).Scan(&room.Id, &room.Owner, &room.CreateData, &room.Opened)
+	return room, err
 }
 
 // 查询历史战绩
@@ -329,12 +329,12 @@ func UpdateNickname(openid string, nickname string) error {
 	return err
 }
 
-// 查询积分
-func QueryScoreById(scoreId int) ([]model.Score, error) {
+// 获取房间内所有用户积分
+func GetRoomScores(roomId int) ([]model.Score, error) {
 	var scores []model.Score
-	rows, err := db.Query("SELECT * FROM scores WHERE id =?", scoreId)
+	rows, err := db.Query("SELECT * FROM scores WHERE roomId =?", roomId)
 	if err != nil {
-		fmt.Println("Error querying score:", err)
+		fmt.Println("Error querying room scores:", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -342,7 +342,7 @@ func QueryScoreById(scoreId int) ([]model.Score, error) {
 		var score model.Score
 		err = rows.Scan(&score.Id, &score.Openid, &score.RoomId, &score.Score, &score.CreateData)
 		if err != nil {
-			fmt.Println("Error scanning score:", err)
+			fmt.Println("Error scanning room scores:", err)
 			return nil, err
 		}
 		scores = append(scores, score)
