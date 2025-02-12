@@ -30,6 +30,10 @@ func InitDB() error {
 
 func CreateTables() error {
 	sqlStatements := []string{
+		`CREATE DATABASE IF NOT EXISTS scoring
+			CHARACTER SET utf8mb4
+			COLLATE utf8mb4_unicode_ci
+		;`,
 		`CREATE TABLE IF NOT EXISTS users (
 			openid VARCHAR(255) PRIMARY KEY,
 			nickname VARCHAR(255) NOT NULL,
