@@ -1,0 +1,7 @@
+services:
+  backend:
+    image: scoring:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - /data/docker-compose/scoring/config.json:/app/config.json

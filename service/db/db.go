@@ -16,13 +16,33 @@ func InitDB() error {
 	var err error
 	db, err = sql.Open("mysql", config.Config.Mysql)
 	if err != nil {
+		fmt.Println("Error opening mysql:", err)
+		return err
+	}
+	err = db.Ping()
+	if err != nil {
+		fmt.Println("Error pinging mysql:", err)
+		return err
+	}
+	// 创建数据库
+	_, err = db.Exec(`CREATE DATABASE IF NOT EXISTS scoring
+			CHARACTER SET utf8mb4
+			COLLATE utf8mb4_unicode_ci
+		;`)
+	if err != nil {
+		fmt.Println("Error creating database:", err)
+		return err
+	}
+	db.Close()
+	// 连接到数据库
+	db, err = sql.Open("mysql", config.Config.Mysql+"scoring")
+	if err != nil {
 		fmt.Println("Error opening database:", err)
 		return err
 	}
 	err = db.Ping()
 	if err != nil {
-		fmt.Println("Error connecting to database:", err)
-		db.Close()
+		fmt.Println("Error pinging database:", err)
 		return err
 	}
 	return nil
@@ -71,7 +91,7 @@ func CreateTables() error {
 	for _, stmt := range sqlStatements {
 		_, err := db.Exec(stmt)
 		if err != nil {
-			fmt.Println("Error creating tables")
+			fmt.Println("Error creating tables", err)
 			return err
 		}
 	}

@@ -40,5 +40,8 @@ func Code2Session(code string) (string, error) {
 	if err != nil {
 		return "", errors.New("parse JSON failed")
 	}
+	if wxData.ErrCode != 0 {
+		return "", errors.New(wxData.ErrMsg)
+	}
 	return wxData.OpenID, nil
 }
