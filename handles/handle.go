@@ -63,7 +63,7 @@ func Login(c *gin.Context) {
 
 // 获取用户房间
 func GetUserRoom(c *gin.Context) {
-	openId := c.Query("openId")
+	openId := c.Request.Header.Get("openId")
 	room, err := db.QueryUserRoom(openId)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -77,7 +77,7 @@ func GetUserRoom(c *gin.Context) {
 
 // 获取用户历史战绩
 func GetHistory(c *gin.Context) {
-	openId := c.Query("openId")
+	openId := c.Request.Header.Get("openId")
 	scores, err := db.QueryHistory(openId)
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
@@ -88,7 +88,7 @@ func GetHistory(c *gin.Context) {
 
 // 创建/加入房间
 func CreateRoom(c *gin.Context) {
-	openId := c.Query("openId")
+	openId := c.Request.Header.Get("openId")
 	roomId, err := db.CreateRoom(openId)
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
@@ -193,19 +193,19 @@ func AddRecord(c *gin.Context) {
 }
 
 type ModifyNicknameModel struct {
-	Openid   string `json:"openid"`
 	Nickname string `json:"nickname"`
 }
 
 // 修改昵称
 func UpdateNickname(c *gin.Context) {
+	openId := c.Request.Header.Get("openId")
 	var data ModifyNicknameModel
 	err := c.Bind(&data)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "body error"})
 		return
 	}
-	err = db.UpdateNickname(data.Openid, data.Nickname)
+	err = db.UpdateNickname(openId, data.Nickname)
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
@@ -214,19 +214,19 @@ func UpdateNickname(c *gin.Context) {
 }
 
 type ExitRoomModel struct {
-	OpenId string `json:"openId"`
-	RoomId int    `json:"roomId"`
+	RoomId int `json:"roomId"`
 }
 
 // 退出房间
 func ExitRoom(c *gin.Context) {
+	openId := c.Request.Header.Get("openId")
 	var data ExitRoomModel
 	err := c.Bind(&data)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "body error"})
 		return
 	}
-	_, err = db.QuitRoom(data.OpenId, data.RoomId)
+	_, err = db.QuitRoom(openId, data.RoomId)
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
