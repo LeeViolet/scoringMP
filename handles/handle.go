@@ -61,6 +61,20 @@ func Login(c *gin.Context) {
 	c.JSON(200, gin.H{"openId": openId, "roomId": room.Id})
 }
 
+// 获取用户房间
+func GetUserRoom(c *gin.Context) {
+	openId := c.Query("openId")
+	room, err := db.QueryUserRoom(openId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.Done()
+			return
+		}
+		c.JSON(400, gin.H{"error": err.Error()})
+	}
+	c.String(200, fmt.Sprint(room.Id))
+}
+
 // 获取用户历史战绩
 func GetHistory(c *gin.Context) {
 	openId := c.Query("openId")

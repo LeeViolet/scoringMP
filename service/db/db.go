@@ -114,7 +114,7 @@ func RegisterUser(openid string, nickname string) error {
 // 查询用户房间
 func QueryUserRoom(openid string) (model.Room, error) {
 	var room model.Room
-	err := db.QueryRow("SELECT * FROM rooms WHERE id =(SELECT roomId FROM users WHERE openid =? ADD opend = 1)", openid).Scan(&room.Id, &room.Owner, &room.CreateData, &room.Opened)
+	err := db.QueryRow("SELECT * FROM rooms WHERE id =(SELECT roomId FROM users WHERE openid =? AND opened = 1)", openid).Scan(&room.Id, &room.Owner, &room.CreateData, &room.Opened)
 	return room, err
 }
 
