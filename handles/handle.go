@@ -35,8 +35,8 @@ func Login(c *gin.Context) {
 	_, err = db.QueryUser(openId)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// 注册，昵称为随机数字
-			err = db.RegisterUser(openId, "user"+openId)
+			// 注册，昵称为用户openId前6位
+			err = db.RegisterUser(openId, "用户"+openId[:6])
 			if err != nil {
 				c.JSON(400, gin.H{"error": err.Error()})
 				return
@@ -151,7 +151,7 @@ func AddRecord(c *gin.Context) {
 	var data AddRecordModel
 	err := c.Bind(&data)
 	if err != nil {
-		c.JSON(400, gin.H{"error": "body error"})
+		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 	// 判断房间是否关闭
