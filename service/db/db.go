@@ -138,16 +138,61 @@ func QueryHistory(openid string) ([]int, error) {
 	return scores, nil
 }
 
-// 创建/加入房间
+// 加入房间
+func JoinRoom(openid string, roomId int) error {
+	// 检查房间是否关闭
+	var opened bool
+	err := db.QueryRow("SELECT opened FROM rooms WHERE id =?", roomId).Scan(&opened)
+	if err != nil {
+		fmt.Println("Error querying room opened:", err)
+		return err
+	}
+	if !opened {
+		return errors.New("room is closed")
+	}
+	// 检查用户是否已经在房间中
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM users WHERE openid =? AND roomId =?", openid, roomId).Scan(&count)
+	if err != nil {
+		fmt.Println("Error querying user in room:", err)
+		return err
+	}
+	if count > 0 {
+		return errors.New("user already in room")
+	}
+	// 加入房间
+	tx, err := db.Begin()
+	if err != nil {
+		fmt.Println("Error starting transaction:", err)
+		return err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+	_, err = tx.Exec("UPDATE users SET roomId =? WHERE openid =?", roomId, openid)
+	if err != nil {
+		fmt.Println("Error updating user room:", err)
+		return err
+	}
+	_, err = tx.Exec("INSERT INTO scores (openid, roomId, score, createData) VALUES (?,?,?, NOW())", openid, roomId, 0)
+	if err != nil {
+		fmt.Println("Error inserting user score:", err)
+		return err
+	}
+	return nil
+}
+
+// 创建/回到房间
 func CreateRoom(openid string) (int, error) {
 	// 检查用户是否已经在房间中
 	user, err := QueryUser(openid)
 	if err != nil {
 		fmt.Println("Error querying user:", err)
 		return 0, err
-	}
-	if user.RoomId.Valid {
-		return int(user.RoomId.Int64), nil
 	}
 	tx, err := db.Begin()
 	if err != nil {
@@ -161,7 +206,10 @@ func CreateRoom(openid string) (int, error) {
 			tx.Commit()
 		}
 	}()
-	// 插入房间
+	if user.RoomId.Valid {
+		return int(user.RoomId.Int64), nil
+	}
+	// 没有房间则创建房间
 	result, err := tx.Exec("INSERT INTO rooms (owner, createData, opened) VALUES (?, NOW(), 1)", openid)
 	if err != nil {
 		fmt.Println("Error inserting room:", err)
@@ -177,14 +225,9 @@ func CreateRoom(openid string) (int, error) {
 		fmt.Println("Error updating user room:", err)
 		return 0, err
 	}
-	return int(roomId), nil
-}
+	_, err = tx.Exec("INSERT INTO scores (openid, roomId, score, createData) VALUES (?,?,?, NOW())", openid, roomId, 0)
 
-// 查询用户积分
-func QueryScore(openid string, roomId int) (model.Score, error) {
-	var score model.Score
-	err := db.QueryRow("SELECT * FROM scores WHERE openid =? AND roomId =?", openid, roomId).Scan(&score.Id, &score.Openid, &score.RoomId, &score.Score, &score.CreateData)
-	return score, err
+	return int(roomId), nil
 }
 
 // 检查房间是否关闭
@@ -198,24 +241,29 @@ func CheckRoom(roomId int) (bool, error) {
 	return opened, nil
 }
 
-// 添加积分
-func AddScore(openid string, roomId int) error {
-	_, err := db.Exec("INSERT INTO scores (openid, roomId, score, createData) VALUES (?,?,?, NOW())", openid, roomId, 0)
-	return err
+type UserScore struct {
+	Openid   string `json:"openid"`
+	Score    int    `json:"score"`
+	Nickname string `json:"nickname"`
 }
 
-// 获取房间用户列表
-func GetRoomUsers(roomId int) ([]model.User, error) {
-	var users []model.User
-	rows, err := db.Query("SELECT * FROM users WHERE roomId =?", roomId)
+// 获取房间用户列表及其 score
+func GetRoomUsers(roomId int) ([]UserScore, error) {
+	var users []UserScore
+	rows, err := db.Query(`
+		SELECT u.openid, u.nickname, s.score 
+		FROM users u JOIN scores s ON u.openid = s.openid AND u.roomId = s.roomId 
+		WHERE u.roomId =?
+		ORDER BY s.createData DESC
+	`, roomId)
 	if err != nil {
 		fmt.Println("Error querying room users:", err)
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var user model.User
-		err = rows.Scan(&user.Openid, &user.Nickname, &user.RoomId, &user.CreateData)
+		var user UserScore
+		err = rows.Scan(&user.Openid, &user.Nickname, &user.Score)
 		if err != nil {
 			fmt.Println("Error scanning room users:", err)
 			return nil, err
@@ -225,18 +273,31 @@ func GetRoomUsers(roomId int) ([]model.User, error) {
 	return users, nil
 }
 
+type UserRecord struct {
+	FromUser string `json:"fromUser"`
+	ToUser   string `json:"toUser"`
+	Score    int    `json:"score"`
+}
+
 // 获取房间分数列表
-func GetRoomRecords(roomId int) ([]model.Record, error) {
-	var records []model.Record
-	rows, err := db.Query("SELECT * FROM records WHERE roomId =?", roomId)
+func GetRoomRecords(roomId int) ([]UserRecord, error) {
+	var records []UserRecord
+	rows, err := db.Query(`
+		SELECT u1.nickname AS fromUser, u2.nickname AS toUser, r.score
+		FROM records r
+		JOIN users u1 ON r.fromUser = u1.openid
+		JOIN users u2 ON r.toUser = u2.openid
+		WHERE r.roomId = ?
+		ORDER BY r.createData DESC
+	`, roomId)
 	if err != nil {
 		fmt.Println("Error querying room records:", err)
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var record model.Record
-		err = rows.Scan(&record.Id, &record.RoomId, &record.Score, &record.FromUser, &record.ToUser, &record.CreateData)
+		var record UserRecord
+		err = rows.Scan(&record.FromUser, &record.ToUser, &record.Score)
 		if err != nil {
 			fmt.Println("Error scanning room records:", err)
 			return nil, err

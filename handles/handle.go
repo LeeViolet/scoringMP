@@ -86,26 +86,28 @@ func GetHistory(c *gin.Context) {
 	c.JSON(200, scores)
 }
 
-// 创建/加入房间
+// 加入房间
+func JoinRoom(c *gin.Context) {
+	openId := c.Request.Header.Get("openId")
+	roomId, err := strconv.Atoi(c.Query("roomId"))
+	if err != nil {
+		c.JSON(400, gin.H{"error": "roomId is required"})
+		return
+	}
+	err = db.JoinRoom(openId, roomId)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+}
+
+// 创建/回到房间
 func CreateRoom(c *gin.Context) {
 	openId := c.Request.Header.Get("openId")
 	roomId, err := db.CreateRoom(openId)
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
-	}
-	// 检查用户是否有计分，没有则插入
-	_, err = db.QueryScore(openId, roomId)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			err = db.AddScore(openId, roomId)
-			if err != nil {
-				c.JSON(400, gin.H{"error": err.Error()})
-				return
-			}
-		} else {
-			c.JSON(400, gin.H{"error": err.Error()})
-		}
 	}
 	c.String(200, fmt.Sprint(roomId))
 }
