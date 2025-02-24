@@ -13,9 +13,10 @@ func InitRouter(r *gin.Engine) {
 		api.GET("/userRoom", handles.GetUserRoom)
 		api.GET("/history", handles.GetHistory)
 		api.POST("/room", handles.CreateRoom)
+		api.POST("/joinRoom", handles.JoinRoom)
 		api.GET("/room", handles.GetRoomDetail)
 		api.POST("/record", handles.AddRecord)
 		api.PUT("/nickname", handles.UpdateNickname)
-		api.DELETE("/exitRoom", handles.ExitRoom)
+		api.DELETE("/room", handles.ExitRoom)
 	}
 }

@@ -86,15 +86,20 @@ func GetHistory(c *gin.Context) {
 	c.JSON(200, scores)
 }
 
+type JoinRoomModel struct {
+	RoomId int `json:"roomId"`
+}
+
 // 加入房间
 func JoinRoom(c *gin.Context) {
 	openId := c.Request.Header.Get("openId")
-	roomId, err := strconv.Atoi(c.Query("roomId"))
+	var data JoinRoomModel
+	err := c.Bind(&data)
 	if err != nil {
-		c.JSON(400, gin.H{"error": "roomId is required"})
+		c.JSON(400, gin.H{"error": "body error"})
 		return
 	}
-	err = db.JoinRoom(openId, roomId)
+	err = db.JoinRoom(openId, data.RoomId)
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
@@ -124,10 +129,6 @@ func GetRoomDetail(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-	if !opened {
-		c.JSON(400, gin.H{"error": "room is not opened"})
-		return
-	}
 	users, err := db.GetRoomUsers(roomId)
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
@@ -138,7 +139,7 @@ func GetRoomDetail(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(200, gin.H{"users": users, "records": records})
+	c.JSON(200, gin.H{"users": users, "records": records, "isOpen": opened})
 }
 
 type AddRecordModel struct {
@@ -233,10 +234,4 @@ func ExitRoom(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-	scores, err := db.GetRoomScores(data.RoomId)
-	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, gin.H{"scores": scores})
 }

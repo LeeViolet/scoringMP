@@ -251,9 +251,10 @@ type UserScore struct {
 func GetRoomUsers(roomId int) ([]UserScore, error) {
 	var users []UserScore
 	rows, err := db.Query(`
-		SELECT u.openid, u.nickname, s.score 
-		FROM users u JOIN scores s ON u.openid = s.openid AND u.roomId = s.roomId 
-		WHERE u.roomId =?
+		SELECT u.openid, u.nickname, s.score
+		FROM scores s
+		JOIN users u ON s.openid = u.openid
+		WHERE s.roomId =?
 		ORDER BY s.createData DESC
 	`, roomId)
 	if err != nil {
@@ -333,7 +334,7 @@ func QuitRoom(openid string, roomId int) (bool, error) {
 	}
 	// 检查用户是否是房主
 	var room model.Room
-	err = tx.QueryRow("SELECT * FROM rooms WHERE id =? ADD opend = 1", roomId).Scan(&room.Id, &room.Owner, &room.CreateData, &room.Opened)
+	err = tx.QueryRow("SELECT * FROM rooms WHERE id =? AND opened = 1", roomId).Scan(&room.Id, &room.Owner, &room.CreateData, &room.Opened)
 	if err != nil {
 		fmt.Println("Error querying room:", err)
 		return false, err
