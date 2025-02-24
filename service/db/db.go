@@ -287,13 +287,14 @@ type UserRecord struct {
 	FromUser string `json:"fromUser"`
 	ToUser   string `json:"toUser"`
 	Score    int    `json:"score"`
+	Time     string `json:"time"`
 }
 
 // 获取房间分数列表
 func GetRoomRecords(roomId int) ([]UserRecord, error) {
 	var records []UserRecord
 	rows, err := db.Query(`
-		SELECT u1.nickname AS fromUser, u2.nickname AS toUser, r.score
+		SELECT u1.nickname AS fromUser, u2.nickname AS toUser, r.score, r.createData
 		FROM records r
 		JOIN users u1 ON r.fromUser = u1.openid
 		JOIN users u2 ON r.toUser = u2.openid
@@ -307,7 +308,7 @@ func GetRoomRecords(roomId int) ([]UserRecord, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var record UserRecord
-		err = rows.Scan(&record.FromUser, &record.ToUser, &record.Score)
+		err = rows.Scan(&record.FromUser, &record.ToUser, &record.Score, &record.Time)
 		if err != nil {
 			fmt.Println("Error scanning room records:", err)
 			return nil, err
