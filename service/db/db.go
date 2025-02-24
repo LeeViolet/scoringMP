@@ -178,6 +178,15 @@ func JoinRoom(openid string, roomId int) error {
 		fmt.Println("Error updating user room:", err)
 		return err
 	}
+	// 检查该用户是否已经有该房间的 score 记录
+	err = tx.QueryRow("SELECT COUNT(*) FROM scores WHERE openid =? AND roomId =?", openid, roomId).Scan(&count)
+	if err != nil {
+		fmt.Println("Error querying user score:", err)
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
 	_, err = tx.Exec("INSERT INTO scores (openid, roomId, score, createData) VALUES (?,?,?, NOW())", openid, roomId, 0)
 	if err != nil {
 		fmt.Println("Error inserting user score:", err)

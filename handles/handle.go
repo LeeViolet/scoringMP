@@ -101,6 +101,10 @@ func JoinRoom(c *gin.Context) {
 	}
 	err = db.JoinRoom(openId, data.RoomId)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(400, gin.H{"error": "room is not exist"})
+			return
+		}
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
